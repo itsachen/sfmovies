@@ -17,6 +17,16 @@ describe('movie model', () => {
       ]);
     });
 
+    it('returns the name or title column as the title', () => {
+      const title = 'The Room';
+
+      const movieWithTitle = Movie.forge({ title }).serialize();
+      const movieWithName = Movie.forge({ name: title }).serialize();
+
+      expect(movieWithTitle.title).to.eql(title);
+      expect(movieWithName.title).to.eql(title);
+    });
+
   });
 
 });
