@@ -1,20 +1,77 @@
 'use strict';
 
-const Movie = require('../../lib/models/movie');
+const Bluebird = require('bluebird');
+
+const LocationsMovies = require('../../lib/models/locations_movies');
+const Location        = require('../../lib/models/location');
+const Movie           = require('../../lib/models/movie');
 
 describe('movie model', () => {
 
   describe('serialize', () => {
 
     it('includes all of the necessary fields', () => {
-      const movie = Movie.forge().serialize();
+      let movie;
 
-      expect(movie).to.have.all.keys([
-        'id',
-        'title',
-        'release_year',
-        'object'
-      ]);
+      return Bluebird.all([
+        new Movie().save({
+          name: 'Its a Wonderful Life',
+          release_year: 1946
+        }),
+        new Location().save({
+          city: 'New York',
+          state: 'NY'
+        })
+      ])
+      .spread((m, l) => {
+        movie = m;
+        return new LocationsMovies()
+        .save({
+          location_id: l.get('id'),
+          movie_id: m.get('id')
+        });
+      })
+      .then(() => movie.serialize())
+      .then((serializedMovie) => {
+        expect(serializedMovie).to.have.all.keys([
+          'id',
+          'title',
+          'release_year',
+          'locations',
+          'object'
+        ]);
+      });
+    });
+
+  });
+
+  describe('locations', () => {
+
+    it('fetches associated locations', () => {
+      let movie;
+      const locationAttributes = {
+        city: 'San Francisco',
+        state: 'CA'
+      };
+
+      return new Movie()
+      .save({
+        name: 'Ye Olde Test Movie', release_year: 1947
+      })
+      .then((m) => movie = m)
+      .then(() => new Location().save(locationAttributes))
+      .then((l) => {
+        return new LocationsMovies()
+        .save({
+          location_id: l.get('id'),
+          movie_id: movie.get('id')
+        });
+      })
+      .then(() => movie.locations())
+      .then((locations) => {
+        expect(locations.length).to.not.eql(0);
+        expect(locations.at(0).get('city')).to.eql('San Francisco');
+      });
     });
 
   });
